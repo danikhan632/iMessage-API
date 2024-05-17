@@ -19,10 +19,11 @@ def require_api_key(f):
 
 global messages
 
+DB_FILEPATH=os.environ.get('DB_FILEPATH')
 def update_fd():
     global messages
     while True:
-        messages = sorted(fetch_data.FetchData().get_messages(), key=sort_key, reverse=True)
+        messages = sorted(fetch_data.FetchData(DB_FILEPATH).get_messages(), key=sort_key, reverse=True)
         time.sleep(5)
 threading.Thread(target=update_fd).start()
 
