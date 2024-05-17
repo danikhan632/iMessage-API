@@ -49,6 +49,7 @@ def sort_key(item):
     return datetime.strptime(item[2], '%Y-%m-%d %H:%M:%S')
 
 def send(phone_number, message):
+    message = message.replace('"', '\\"')
     applescript = f'''
     tell application "Messages"
         set targetService to 1st service whose service type = iMessage
