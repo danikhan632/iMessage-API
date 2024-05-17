@@ -42,11 +42,12 @@ pip install -r requirements.txt
 python3 icloud_parser.py
 ```
 
-Now rename ".env.template" to ".env"and set a  password, your name, and port number for this to run off
+Now rename ".env.template" to ".env"and set a  password, your name, and port number for this to run off. Replace `$user` in `DB_FILEPATH` with your user account name.
 ```
 PASSWORD=password
 YOUR_NAME=your-name
 PORT_NUMBER=5000
+DB_FILEPATH=/Users/$user/Library/Messages/chat.db
 ```
 
 Now to run to run the api server, run the following command
