@@ -1,32 +1,41 @@
-import time, csv, re, json, threading,os
+import time
+import csv
+import re
+import json
+import threading
+import os
 from datetime import datetime
 from flask import Flask, request, jsonify
 from imessage_reader import fetch_data
 import subprocess
 from functools import wraps
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 PASSWORD = os.environ.get('PASSWORD')
-MY_NAME=os.environ.get('YOUR_NAME')
+MY_NAME = os.environ.get('YOUR_NAME')
+
 def require_api_key(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if request.headers.get('api_key') != PASSWORD:
+        if request.headers.get('Api-Key') != PASSWORD:
             return jsonify({'error': 'Invalid API key'}), 401
         return f(*args, **kwargs)
     return decorated_function
 
-
 global messages
 
-DB_FILEPATH=os.environ.get('DB_FILEPATH')
+DB_FILEPATH = os.environ.get('DB_FILEPATH')
+
 def update_fd():
     global messages
     while True:
         messages = sorted(fetch_data.FetchData(DB_FILEPATH).get_messages(), key=sort_key, reverse=True)
         time.sleep(5)
-threading.Thread(target=update_fd).start()
 
+threading.Thread(target=update_fd).start()
 
 contacts = json.load(open("contacts.json", "r"))
 reversed_contacts = {value: key for key, value in contacts.items()}
@@ -43,7 +52,6 @@ def getName(phone_number):
             return contacts["+1" + phone_number]
     except KeyError:
         return phone_number
-
 
 def sort_key(item):
     return datetime.strptime(item[2], '%Y-%m-%d %H:%M:%S')
@@ -62,7 +70,6 @@ def send(phone_number, message):
     except Exception as e:
         print(f"Error sending message to {phone_number}: {e}")
 
-
 @app.route('/send', methods=['POST'])
 @require_api_key
 def send_message():
@@ -76,15 +83,13 @@ def send_message():
         recipient = data['recipient']
         message = data['message']
         if isName:
-            recipient =getName(data['recipient'])
+            recipient = getName(data['recipient'])
         send(recipient, message)
         return jsonify({'status': "ok"}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    
-    
-    
+
 @app.route('/messages', methods=['GET'])
 @require_api_key
 def get_messages():
@@ -94,21 +99,20 @@ def get_messages():
         sent = request.args.get('sent', True) in ['True', 'true']
         formatted = request.args.get('formatted', True) in ['True', 'true']
         if num_messages > len(messages):
-            num_messages= len(messages)
-        if formatted ==False:
-            return jsonify({'messages':messages[:num_messages] }), 200
+            num_messages = len(messages)
+        if formatted == False:
+            return jsonify({'messages': messages[:num_messages]}), 200
         temp_messages = []
-        # else
-        for i in range(0,num_messages):
-            sent_by_me=bool(int(messages[i][5]))
-            name=getName(messages[i][0])
+        for i in range(0, num_messages):
+            sent_by_me = bool(int(messages[i][5]))
+            name = getName(messages[i][0])
             timestamp = datetime.strptime(messages[i][2], "%Y-%m-%d %H:%M:%S")
-            if sent_by_me==False:
-                temp_messages.append({"from":name,"body":messages[i][1],"to":MY_NAME,"datetime":timestamp})
-            elif sent_by_me==True and sent==True:
-                temp_messages.append({"from":MY_NAME,"body":messages[i][1],"to":name,"datetime":timestamp})
+            if sent_by_me == False:
+                temp_messages.append({"from": name, "body": messages[i][1], "to": MY_NAME, "datetime": timestamp})
+            elif sent_by_me == True and sent == True:
+                temp_messages.append({"from": MY_NAME, "body": messages[i][1], "to": name, "datetime": timestamp})
         
-        return jsonify({'messages':temp_messages }), 200
+        return jsonify({'messages': temp_messages}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -128,31 +132,29 @@ def get_person_messages(person):
         sent = request.args.get('sent', True) in ['True', 'true']
         formatted = request.args.get('formatted', True) in ['True', 'true']
         if num_messages > len(messages):
-            num_messages= len(messages)
+            num_messages = len(messages)
         temp_messages = []
-        if formatted ==False:
-            for i in range(0,num_messages):
+        if formatted == False:
+            for i in range(0, num_messages):
                 if messages[i][0] == person:
                     temp_messages.append(messages[i])
-            return jsonify({'messages':messages[:num_messages] }), 200
+            return jsonify({'messages': messages[:num_messages]}), 200
         
-        # else
-        for i in range(0,num_messages):
-            sent_by_me=bool(int(messages[i][5]))
-            name=messages[i][0]
+        for i in range(0, num_messages):
+            sent_by_me = bool(int(messages[i][5]))
+            name = messages[i][0]
             if isName:
-                name=getName(messages[i][0])
+                name = getName(messages[i][0])
             timestamp = datetime.strptime(messages[i][2], "%Y-%m-%d %H:%M:%S")
             if name == person:
-                if sent_by_me==False:
-                    temp_messages.append({"from":name,"body":messages[i][1],"to":MY_NAME,"datetime":timestamp})
-                elif sent_by_me==True and sent==True:
-                    temp_messages.append({"from":MY_NAME,"body":messages[i][1],"to":name,"datetime":timestamp})
+                if sent_by_me == False:
+                    temp_messages.append({"from": name, "body": messages[i][1], "to": MY_NAME, "datetime": timestamp})
+                elif sent_by_me == True and sent == True:
+                    temp_messages.append({"from": MY_NAME, "body": messages[i][1], "to": name, "datetime": timestamp})
         
-        return jsonify({'messages':temp_messages }), 200
+        return jsonify({'messages': temp_messages}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 @app.route('/recent_contacts', methods=['GET'])
 @require_api_key
@@ -169,10 +171,6 @@ def get_most_recent_contacts():
         return jsonify({'recent_contacts': list(recent_contacts)}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-
-
-
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT_NUMBER', '5000')))
